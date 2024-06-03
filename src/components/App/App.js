@@ -68,8 +68,6 @@ function App() {
   //Таймер
   const startTimer = (taskId) => {
     clearInterval(timerIds[taskId])
-    console.log(`Starting timer for task ${taskId}`)
-
     setTasks((prevTasks) => {
       const updatedTasks = prevTasks.map((task) => {
         if (task.id === taskId) {
@@ -94,10 +92,8 @@ function App() {
     setTasks((prevTasks) => {
       const updatedTasks = prevTasks.map((task) => {
         if (task.id === taskId && task.currentTime > 0) {
-          console.log(`Task ${taskId} - Current time: ${task.currentTime}`)
           return { ...task, currentTime: task.currentTime - 1 }
         } else if (task.id === taskId && task.currentTime === 0) {
-          console.log(`Task ${taskId} - Timer finished`)
           clearInterval(timerIds[taskId])
           return { ...task, isRunning: false }
         }
