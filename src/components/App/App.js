@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom'
 
 import NewTaskForm from '../NewTaskForm/NewTaskForm'
@@ -6,32 +6,46 @@ import TaskList from '../TaskList/TaskList'
 import Footer from '../Footer/Footer'
 import './App.css'
 
-export default class App extends Component {
-  constructor() {
-    super()
-    this.state = {
-      tasks: [
-        { id: 1, text: 'Check mail', completed: false, editing: false, isRunning: false, currentTime: 0 },
-        { id: 2, text: 'Drink coffee', completed: false, editing: false, isRunning: false, currentTime: 0 },
-        { id: 3, text: 'Buy a cake', completed: false, editing: false, isRunning: false, currentTime: 0 },
-      ],
-      filter: 'all',
-      minutes: '',
-      seconds: '',
-      currentTime: 0,
-      timerIds: {},
-    }
-  }
+function App() {
+  const [tasks, setTasks] = useState([
+    { id: 1, text: 'Check mail', completed: false, editing: false, isRunning: false, currentTime: 0 },
+    { id: 2, text: 'Drink coffee', completed: false, editing: false, isRunning: false, currentTime: 0 },
+    { id: 3, text: 'Buy a cake', completed: false, editing: false, isRunning: false, currentTime: 0 },
+  ])
+  const [filter, setFilter] = useState('all')
+  const [minutes] = useState('')
+  const [seconds] = useState('')
+  const [, setCurrentTime] = useState(0)
+  const [timerIds, setTimerIds] = useState({})
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const updatedTasks = tasks.map((task) => {
+        if (task.isRunning && task.currentTime > 0) {
+          return { ...task, currentTime: task.currentTime - 1 }
+        } else if (task.isRunning && task.currentTime === 0) {
+          clearInterval(timerIds[task.id])
+          return { ...task, isRunning: false }
+        }
+        return task
+      })
+      setTasks(updatedTasks)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [tasks, timerIds])
+
+  useEffect(() => {
+    setCurrentTime(tasks.currentTime)
+  }, [tasks])
 
   // Изменение значения свойства у элемента
-  handleTaskCompleted = (id, completed) => {
-    this.setState((prevState) => ({
-      tasks: prevState.tasks.map((task) => (task.id === id ? { ...task, completed } : task)),
-    }))
+  const handleTaskCompleted = (id, completed) => {
+    setTasks((prevTasks) => prevTasks.map((task) => (task.id === id ? { ...task, completed } : task)))
   }
 
   // Добавление задач
-  handleAddTask = (newTask, minutes, seconds) => {
+  const handleAddTask = (newTask, minutes, seconds) => {
     let currentTime = 0
 
     if (minutes !== '') {
@@ -48,79 +62,88 @@ export default class App extends Component {
       currentTime: currentTime,
     }
 
-    this.setState((prevState) => ({
-      tasks: [...prevState.tasks, createdTask],
-    }))
+    setTasks((prevTasks) => [...prevTasks, createdTask])
   }
 
   //Таймер
-  startTimer = (taskId) => {
-    clearInterval(this.state.timerIds[taskId])
+  const startTimer = (taskId) => {
+    clearInterval(timerIds[taskId])
+    console.log(`Starting timer for task ${taskId}`)
+
+    setTasks((prevTasks) => {
+      const updatedTasks = prevTasks.map((task) => {
+        if (task.id === taskId) {
+          return { ...task, currentTime: task.currentTime - 1 }
+        }
+        return task
+      })
+      return updatedTasks
+    })
 
     const timerId = setInterval(() => {
-      const updatedTasks = this.state.tasks.map((task) => {
+      updateTimer(taskId)
+    }, 1000)
+
+    setTimerIds((prevTimerIds) => ({
+      ...prevTimerIds,
+      [taskId]: timerId,
+    }))
+  }
+
+  const updateTimer = (taskId) => {
+    setTasks((prevTasks) => {
+      const updatedTasks = prevTasks.map((task) => {
         if (task.id === taskId && task.currentTime > 0) {
+          console.log(`Task ${taskId} - Current time: ${task.currentTime}`)
           return { ...task, currentTime: task.currentTime - 1 }
         } else if (task.id === taskId && task.currentTime === 0) {
-          clearInterval(this.state.timerIds[taskId])
+          console.log(`Task ${taskId} - Timer finished`)
+          clearInterval(timerIds[taskId])
           return { ...task, isRunning: false }
         }
         return task
       })
-      this.updateTaskState(updatedTasks, taskId)
-    }, 1000)
-
-    this.setState((prevState) => ({
-      timerIds: {
-        ...prevState.timerIds,
-        [taskId]: timerId,
-      },
-    }))
+      updateTaskState(updatedTasks, taskId)
+      return updatedTasks
+    })
   }
 
-  pauseTimer = (taskId) => {
-    clearInterval(this.state.timerIds[taskId])
-    const updatedTasks = this.state.tasks.map((task) => {
+  const pauseTimer = (taskId) => {
+    clearInterval(timerIds[taskId])
+    const updatedTasks = tasks.map((task) => {
       if (task.id === taskId) {
         return { ...task, isRunning: false }
       }
       return task
     })
-    this.setState({ tasks: updatedTasks })
+    setTasks(updatedTasks)
   }
 
-  updateTaskState = (updatedTasks, taskId) => {
+  const updateTaskState = (updatedTasks, taskId) => {
     const taskToUpdate = updatedTasks.find((task) => task.id === taskId)
     if (taskToUpdate) {
-      this.setState({
-        tasks: updatedTasks,
-        currentTime: taskToUpdate.currentTime,
-      })
+      setTasks(updatedTasks)
     } else {
       console.error(`Task with ID ${taskId} not found.`)
     }
   }
 
   // Удаление задач
-  handleDeleteTask = (id) => {
-    this.setState((prevState) => ({
-      tasks: prevState.tasks.filter((task) => task.id !== id),
-    }))
+  const handleDeleteTask = (id) => {
+    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id))
   }
 
   // Удаление всех выполненных задач
-  handleClearCompletedTasks = () => {
-    this.setState((prevState) => ({
-      tasks: prevState.tasks.filter((task) => !task.completed),
-    }))
+  const handleClearCompletedTasks = () => {
+    setTasks((prevTasks) => prevTasks.filter((task) => !task.completed))
   }
 
   // Фильтрация по кнопкам
-  handleFilterTasks = (filter) => {
-    this.setState({ filter })
+  const handleFilterTasks = (filter) => {
+    setFilter(filter)
   }
 
-  filterTasks = (tasks, filter) => {
+  const filterTasks = (tasks, filter) => {
     if (filter === 'active') {
       return tasks.filter((task) => !task.completed)
     } else if (filter === 'completed') {
@@ -131,57 +154,52 @@ export default class App extends Component {
   }
 
   // Состояние задач
-  clickOnInput = (id) => {
-    this.setState((prevState) => ({
-      tasks: prevState.tasks.map((task) => (task.id === id ? { ...task, completed: !task.completed } : task)),
-    }))
+  const clickOnInput = (id) => {
+    setTasks((prevTasks) => prevTasks.map((task) => (task.id === id ? { ...task, completed: !task.completed } : task)))
   }
 
   // Подсчет активных задач
-  countIncompleteTasks = () => {
-    const { tasks } = this.state
+  const countIncompleteTasks = () => {
     return tasks.filter((task) => !task.completed).length
   }
 
   // Редактирование задач
-  handleEditTask = (id, newText) => {
-    this.setState((prevState) => ({
-      tasks: prevState.tasks.map((task) => (task.id === id ? { ...task, text: newText } : task)),
-    }))
+  const handleEditTask = (id, newText) => {
+    setTasks((prevTasks) => prevTasks.map((task) => (task.id === id ? { ...task, text: newText } : task)))
   }
 
-  render() {
-    const { filter, tasks } = this.state
-    const filteredTasks = this.filterTasks(tasks, filter)
+  const filteredTasks = filterTasks(tasks, filter)
 
-    return (
-      <section className="todoapp">
-        <header className="header">
-          <h1>todos</h1>
-          <NewTaskForm onAddTask={this.handleAddTask} />
-        </header>
-        <section className="main">
-          <TaskList
-            tasks={filteredTasks}
-            onDeleteTask={this.handleDeleteTask}
-            onTaskCompleted={this.handleTaskCompleted}
-            clickOnInput={this.clickOnInput}
-            onEditTask={this.handleEditTask}
-            createdAt={new Date()}
-            minutes={this.state.minutes}
-            seconds={this.state.seconds}
-            startTimer={this.startTimer}
-            pauseTimer={this.pauseTimer}
-          />
-          <Footer
-            filter={this.state.filter}
-            onClearCompletedTasks={this.handleClearCompletedTasks}
-            onFilterTasks={this.handleFilterTasks}
-            countIncompleteTasks={this.countIncompleteTasks}
-          />
-        </section>
+  return (
+    <section className="todoapp">
+      <header className="header">
+        <h1>todos</h1>
+        <NewTaskForm onAddTask={handleAddTask} />
+      </header>
+      <section className="main">
+        <TaskList
+          tasks={filteredTasks}
+          onDeleteTask={handleDeleteTask}
+          onTaskCompleted={handleTaskCompleted}
+          clickOnInput={clickOnInput}
+          onEditTask={handleEditTask}
+          createdAt={new Date()}
+          minutes={minutes}
+          seconds={seconds}
+          startTimer={startTimer}
+          pauseTimer={pauseTimer}
+        />
+        <Footer
+          filter={filter}
+          onClearCompletedTasks={handleClearCompletedTasks}
+          onFilterTasks={handleFilterTasks}
+          countIncompleteTasks={countIncompleteTasks}
+        />
       </section>
-    )
-  }
+    </section>
+  )
 }
+
 ReactDOM.render(<App />, document.getElementById('root'))
+
+export default App
