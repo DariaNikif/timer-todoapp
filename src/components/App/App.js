@@ -56,6 +56,11 @@ function App() {
       currentTime += parseInt(seconds)
     }
 
+    if (currentTime === 0) {
+      alert('Please specify time in minutes or seconds.')
+      return
+    }
+
     const createdTask = {
       ...newTask,
       createdAt: new Date(),
@@ -67,25 +72,33 @@ function App() {
 
   //Таймер
   const startTimer = (taskId) => {
-    clearInterval(timerIds[taskId])
     setTasks((prevTasks) => {
       const updatedTasks = prevTasks.map((task) => {
         if (task.id === taskId) {
-          return { ...task, currentTime: task.currentTime - 1 }
+          if (task.currentTime === 0) {
+            alert('You cannot start the timer from 00:00.')
+            return task
+          }
+          if (task.isRunning) {
+            return task
+          }
+          return { ...task, isRunning: true }
         }
         return task
       })
       return updatedTasks
     })
 
-    const timerId = setInterval(() => {
-      updateTimer(taskId)
-    }, 1000)
+    if (!timerIds[taskId]) {
+      const timerId = setInterval(() => {
+        updateTimer(taskId)
+      }, 1000)
 
-    setTimerIds((prevTimerIds) => ({
-      ...prevTimerIds,
-      [taskId]: timerId,
-    }))
+      setTimerIds((prevTimerIds) => ({
+        ...prevTimerIds,
+        [taskId]: timerId,
+      }))
+    }
   }
 
   const updateTimer = (taskId) => {
@@ -95,6 +108,11 @@ function App() {
           return { ...task, currentTime: task.currentTime - 1 }
         } else if (task.id === taskId && task.currentTime === 0) {
           clearInterval(timerIds[taskId])
+          setTimerIds((prevTimerIds) => {
+            const newTimerIds = { ...prevTimerIds }
+            delete newTimerIds[taskId]
+            return newTimerIds
+          })
           return { ...task, isRunning: false }
         }
         return task
@@ -106,6 +124,11 @@ function App() {
 
   const pauseTimer = (taskId) => {
     clearInterval(timerIds[taskId])
+    setTimerIds((prevTimerIds) => {
+      const newTimerIds = { ...prevTimerIds }
+      delete newTimerIds[taskId]
+      return newTimerIds
+    })
     const updatedTasks = tasks.map((task) => {
       if (task.id === taskId) {
         return { ...task, isRunning: false }

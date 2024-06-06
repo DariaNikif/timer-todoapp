@@ -29,6 +29,11 @@ const NewTaskForm = ({ onAddTask }) => {
         return
       }
 
+      if (minutes === '' && seconds === '') {
+        alert('Please specify time in minutes or seconds.')
+        return
+      }
+
       const newTask = {
         id: Math.random().toString(36).substr(2, 9),
         text: text,
